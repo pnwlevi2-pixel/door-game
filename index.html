@@ -1,0 +1,357 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impossible Door Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 30px;
+        }
+        #game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #2c2c2c;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #doors {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            perspective: 1000px;
+        }
+        .door {
+            width: 100px;
+            height: 180px;
+            background: linear-gradient(135deg, #8b4513, #5c4033);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 3px solid #3c2f2f;
+            border-radius: 10px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.3);
+            position: relative;
+            transform: rotateY(10deg);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .door:hover {
+            transform: rotateY(0deg) scale(1.05);
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        .door::after {
+            content: '';
+            position: absolute;
+            right: 10px;
+            width: 10px;
+            height: 40px;
+            background-color: #d4a017;
+            border-radius: 5px;
+        }
+        #message {
+            font-size: 22px;
+            margin: 20px 0;
+            min-height: 44px;
+        }
+        #riddle, #challenge {
+            font-size: 20px;
+            font-style: italic;
+            margin: 20px 0;
+            color: #e0e0e0;
+            background-color: #3a3a3a;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        #challenge-input {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            width: 200px;
+        }
+        #submit-challenge {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #submit-challenge:hover {
+            background-color: #45a049;
+        }
+        #stage {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        #restart {
+            display: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #restart:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Impossible Door Game</h1>
+        <p>Navigate through 10 stages by solving cryptic riddles to pick the correct door. Survive brutal challenges after stages 3, 6, and 9.</p>
+        <p id="stage">Stage 1</p>
+        <div id="riddle"></div>
+        <div id="challenge" style="display: none;"></div>
+        <input id="challenge-input" type="text" style="display: none;" placeholder="Enter answer">
+        <button id="submit-challenge" style="display: none;">Submit</button>
+        <div id="doors"></div>
+        <p id="message"></p>
+        <button id="restart">Play Again</button>
+    </div>
+
+    <script>
+        let currentStage = 1;
+        let numDoors;
+        let correctDoor;
+        let challengeActive = false;
+        let challengeAnswer;
+
+        // 10 riddles per door number (1–10), all hard and cryptic
+        const riddles = [
+            // Door 1
+            { text: "I am the unity, the start of all counts. In binary, I’m one bit’s amount.", answer: 1 },
+            { text: "The first of naturals, no less can be. I’m the identity of multiplicity.", answer: 1 },
+            { text: "In a line of ten, I lead the race. No number precedes my place.", answer: 1 },
+            { text: "I’m the smallest prime’s predecessor plus one. What door am I when the counting’s done?", answer: 1 },
+            { text: "Factorial of me is me alone. I’m the first door, set in stone.", answer: 1 },
+            { text: "In modulo any, I’m always myself. I’m the first on the numerical shelf.", answer: 1 },
+            { text: "I’m the root of one, no more, no less. Choose me to begin your quest.", answer: 1 },
+            { text: "The sum of no numbers, yet I exist. I’m the first door you can’t resist.", answer: 1 },
+            { text: "I’m the order of the trivial group. First door, I’m in the loop.", answer: 1 },
+            { text: "No divisors but myself and me. I’m the smallest such, what door could I be?", answer: 1 },
+            // Door 2
+            { text: "I’m the only even prime, standing alone. What door am I in this cryptic zone?", answer: 2 },
+            { text: "Divide me by three, the remainder is me. I’m the smallest door of prime degree.", answer: 2 },
+            { text: "I’m the sum of the first two naturals. What door am I in these portals?", answer: 2 },
+            { text: "In a pair, I’m the count. Second door, I’m the amount.", answer: 2 },
+            { text: "My square is the next perfect square after one. What door am I when the math is done?", answer: 2 },
+            { text: "I’m the number of elements in a binary choice. Pick my door, let your voice.", answer: 2 },
+            { text: "The first Fibonacci pair sums to me. What door unlocks this mystery?", answer: 2 },
+            { text: "I’m one less than the smallest odd prime. What door am I in this climb?", answer: 2 },
+            { text: "In a triangle, I’m the second side count. What door am I in this amount?", answer: 2 },
+            { text: "My divisors are one and me, I’m not one. What door am I when the riddle’s done?", answer: 2 },
+            // Door 3
+            { text: "I’m the smallest odd prime, a simple decree. What door am I in this mystery?", answer: 3 },
+            { text: "My square is the sum of the first three odds. What door am I in these cryptic lauds?", answer: 3 },
+            { text: "In a triangle, I’m the sides you see. What door am I, set free?", answer: 3 },
+            { text: "I’m the second prime in the counting line. Choose my door, the path is thine.", answer: 3 },
+            { text: "My cube is twenty-seven, no more, no less. What door am I in this quest?", answer: 3 },
+            { text: "I’m one more than the only even prime. What door am I in this rhyme?", answer: 3 },
+            { text: "The divisors I have are two, including one. What door am I when the count is done?", answer: 3 },
+            { text: "I’m the sum of one and two, a simple sum. What door am I, where do I come from?", answer: 3 },
+            { text: "In modulo four, I’m one less than four. What am I, the correct door?", answer: 3 },
+            { text: "I’m the smallest number with exactly two divisors. What door am I, the prime endorser?", answer: 3 },
+            // Door 4
+            { text: "My square root is two, my square is sixteen. What door am I in this scene?", answer: 4 },
+            { text: "I’m the smallest square greater than one. What door am I when the math is done?", answer: 4 },
+            { text: "Twice my square root equals my name. What door am I in this game?", answer: 4 },
+            { text: "I’m the number of sides on a square. What door am I, standing there?", answer: 4 },
+            { text: "I’m two squared, a perfect fit. What door am I, where I sit?", answer: 4 },
+            { text: "The sum of two twos points to me. What door am I, set free?", answer: 4 },
+            { text: "I’m one more than the third prime. What door am I in this climb?", answer: 4 },
+            { text: "My divisors are three, including one and me. What door am I, can you see?", answer: 4 },
+            { text: "In a chessboard’s smallest square, I’m the count. What door am I in this amount?", answer: 4 },
+            { text: "I’m the product of the first two primes. What door am I in these times?", answer: 4 },
+            // Door 5
+            { text: "In Fibonacci’s dance, I’m the fifth to appear. What door am I, have no fear?", answer: 5 },
+            { text: "I’m the third prime in the sequence you know. What door am I, where to go?", answer: 5 },
+            { text: "My square is twenty-five, a perfect square. What door am I, standing there?", answer: 5 },
+            { text: "I’m the number of fingers on one hand. What door am I in this land?", answer: 5 },
+            { text: "I’m one less than twice the third prime. What door am I in this rhyme?", answer: 5 },
+            { text: "In a pentagon, I’m the count of sides. What door am I where victory hides?", answer: 5 },
+            { text: "My divisors are two, I’m a prime alone. What door am I, set in stone?", answer: 5 },
+            { text: "I’m the sum of two and three, a simple sum. What door am I, where do I come from?", answer: 5 },
+            { text: "In modulo six, I’m one less than six. What door am I in this mix?", answer: 5 },
+            { text: "I’m the smallest prime greater than three. What door am I, can you see?", answer: 5 },
+            // Door 6
+            { text: "I’m the product of the first two primes. What door am I in these times?", answer: 6 },
+            { text: "In a hexagon, I’m the count of sides. What door am I where the path abides?", answer: 6 },
+            { text: "I’m one more than the third prime. What door am I in this climb?", answer: 6 },
+            { text: "My divisors are four, including one and me. What door am I, can you see?", answer: 6 },
+            { text: "I’m the sum of the first three naturals. What door am I in these portals?", answer: 6 },
+            { text: "Twice three is me, a simple deed. What door am I to proceed?", answer: 6 },
+            { text: "I’m the smallest perfect number, no less. What door am I in this quest?", answer: 6 },
+            { text: "In modulo seven, I’m one less than seven. What door am I, to heaven?", answer: 6 },
+            { text: "I’m the number of faces on a cube. What door am I, no flube?", answer: 6 },
+            { text: "I’m three times the only even prime. What door am I in this rhyme?", answer: 6 },
+            // Door 7
+            { text: "In the sequence of primes, I’m the fourth. What door am I, set forth?", answer: 7 },
+            { text: "My digits sum to me, I’m one digit alone. What door am I, set in stone?", answer: 7 },
+            { text: "I’m the smallest prime greater than five. What door am I to survive?", answer: 7 },
+            { text: "In a heptagon, I’m the count of sides. What door am I where luck resides?", answer: 7 },
+            { text: "I’m one less than twice four. What door am I, nothing more?", answer: 7 },
+            { text: "My square is forty-nine, a prime’s delight. What door am I in your sight?", answer: 7 },
+            { text: "I’m the number of days in a week. What door am I, take a peek?", answer: 7 },
+            { text: "In modulo eight, I’m one less than eight. What door am I, it’s not too late?", answer: 7 },
+            { text: "I’m the fourth in the prime line’s run. What door am I when the count is done?", answer: 7 },
+            { text: "My divisors are two, I’m prime and odd. What door am I, by the gods?", answer: 7 },
+            // Door 8
+            { text: "I’m the cube of two, a power so neat. What door am I where paths meet?", answer: 8 },
+            { text: "In an octagon, I’m the count of sides. What door am I where truth abides?", answer: 8 },
+            { text: "I’m twice the smallest square greater than one. What door am I when the math is done?", answer: 8 },
+            { text: "My divisors are five, including one and me. What door am I, can you see?", answer: 8 },
+            { text: "I’m one less than the third perfect square. What door am I, standing there?", answer: 8 },
+            { text: "I’m four times the only even prime. What door am I in this rhyme?", answer: 8 },
+            { text: "In a byte, I’m the number of bits. What door am I where logic fits?", answer: 8 },
+            { text: "I’m the sum of four twos, a simple sum. What door am I, where do I come from?", answer: 8 },
+            { text: "I’m two less than the smallest two-digit number. What door am I, free from slumber?", answer: 8 },
+            { text: "My square root is not whole, but my cube root is. What door am I in this quiz?", answer: 8 },
+            // Door 9
+            { text: "I’m the square of the smallest odd prime. What door am I in this climb?", answer: 9 },
+            { text: "I’m the sum of the first three odd numbers. What door am I, free from blunders?", answer: 9 },
+            { text: "My square is eighty-one, a perfect square. What door am I, standing there?", answer: 9 },
+            { text: "I’m three squared, a number divine. What door am I in this line?", answer: 9 },
+            { text: "I’m one less than the smallest two-digit number. What door am I, free from slumber?", answer: 9 },
+            { text: "In a nonagon, I’m the count of sides. What door am I where truth abides?", answer: 9 },
+            { text: "I’m the product of three and three. What door am I, can you see?", answer: 9 },
+            { text: "My divisors are three, I’m a square. What door am I, standing there?", answer: 9 },
+            { text: "I’m the sum of five and four. What door am I, nothing more?", answer: 9 },
+            { text: "I’m one more than twice four. What door am I, explore?", answer: 9 },
+            // Door 10
+            { text: "I’m the smallest two-digit number, a round delight. What door am I in your sight?", answer: 10 },
+            { text: "I’m one less than the smallest two-digit prime. What door am I in this rhyme?", answer: 10 },
+            { text: "I’m the sum of the first four naturals. What door am I in these portals?", answer: 10 },
+            { text: "In a decagon, I’m the count of sides. What door am I where victory hides?", answer: 10 },
+            { text: "I’m twice the fifth Fibonacci number. What door am I, free from slumber?", answer: 10 },
+            { text: "My divisors are four, including one and me. What door am I, can you see?", answer: 10 },
+            { text: "I’m five times the only even prime. What door am I in this line?", answer: 10 },
+            { text: "I’m the number of fingers on both hands. What door am I in these lands?", answer: 10 },
+            { text: "In modulo eleven, I’m one less than eleven. What door am I, to heaven?", answer: 10 },
+            { text: "I’m the sum of six and four. What door am I, nothing more?", answer: 10 }
+        ];
+
+        // Challenges after stages 3, 6, and 9
+        const challenges = [
+            { text: "Solve: If x² - 5x + 6 = 0, what is the sum of the roots?", answer: "5" },
+            { text: "In a group of 4 people, each shakes hands with everyone else once. How many handshakes occur?", answer: "6" },
+            { text: "What is the next number in the sequence: 1, 4, 10, 22, 46, ?", answer: "94" },
+            { text: "A knight on a chessboard starts at (1,1) and moves to (3,2). How many moves did it take?", answer: "1" },
+            { text: "If the day after tomorrow is Wednesday, what day is it today? (Enter the day number, 1=Sunday, 7=Saturday)", answer: "1" }
+        ];
+
+        function startStage() {
+            document.getElementById('doors').innerHTML = '';
+            document.getElementById('message').innerText = '';
+            document.getElementById('restart').style.display = 'none';
+            document.getElementById('challenge').style.display = 'none';
+            document.getElementById('challenge-input').style.display = 'none';
+            document.getElementById('submit-challenge').style.display = 'none';
+            challengeActive = false;
+
+            if ([4, 7, 10].includes(currentStage)) {
+                startChallenge();
+                return;
+            }
+
+            numDoors = Math.floor(Math.random() * 7) + 4; // 4 to 10 doors
+            document.getElementById('stage').innerText = `Stage ${currentStage}`;
+
+            const validRiddles = riddles.filter(riddle => riddle.answer <= numDoors);
+            const riddle = validRiddles[Math.floor(Math.random() * validRiddles.length)];
+            correctDoor = riddle.answer;
+            document.getElementById('riddle').innerText = `Riddle: ${riddle.text}`;
+
+            for (let i = 1; i <= numDoors; i++) {
+                const door = document.createElement('div');
+                door.className = 'door';
+                door.innerText = i;
+                door.addEventListener('click', () => chooseDoor(i));
+                document.getElementById('doors').appendChild(door);
+            }
+        }
+
+        function startChallenge() {
+            challengeActive = true;
+            document.getElementById('doors').innerHTML = '';
+            document.getElementById('riddle').innerText = '';
+            const challenge = challenges[Math.floor(Math.random() * challenges.length)];
+            challengeAnswer = challenge.answer;
+            document.getElementById('challenge').innerText = `Challenge: ${challenge.text}`;
+            document.getElementById('challenge').style.display = 'block';
+            document.getElementById('challenge-input').style.display = 'inline-block';
+            document.getElementById('submit-challenge').style.display = 'inline-block';
+            document.getElementById('message').innerText = 'Solve the challenge to proceed!';
+        }
+
+        function chooseDoor(doorNumber) {
+            if (challengeActive) return;
+            const doors = document.getElementsByClassName('door');
+            for (let door of doors) {
+                door.style.pointerEvents = 'none';
+            }
+
+            if (doorNumber === correctDoor) {
+                document.getElementById('message').innerText = `Correct! Door ${doorNumber} was the right one.`;
+                currentStage++;
+                if (currentStage > 10) {
+                    document.getElementById('message').innerText = 'Congratulations! You beat the impossible game!';
+                    document.getElementById('riddle').innerText = '';
+                    document.getElementById('restart').style.display = 'block';
+                } else {
+                    setTimeout(startStage, 1500);
+                }
+            } else {
+                document.getElementById('message').innerText = `Wrong! Door ${correctDoor} was the correct one. Game Over!`;
+                document.getElementById('restart').style.display = 'block';
+            }
+        }
+
+        function checkChallenge() {
+            const userAnswer = document.getElementById('challenge-input').value.trim();
+            if (userAnswer === challengeAnswer) {
+                document.getElementById('message').innerText = 'Challenge solved! Proceeding to next stage.';
+                document.getElementById('challenge').style.display = 'none';
+                document.getElementById('challenge-input').style.display = 'none';
+                document.getElementById('submit-challenge').style.display = 'none';
+                challengeActive = false;
+                setTimeout(startStage, 1500);
+            } else {
+                document.getElementById('message').innerText = `Wrong answer! Game Over!`;
+                document.getElementById('restart').style.display = 'block';
+            }
+            document.getElementById('challenge-input').value = '';
+        }
+
+        document.getElementById('submit-challenge').addEventListener('click', checkChallenge);
+        document.getElementById('challenge-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkChallenge();
+        });
+
+        document.getElementById('restart').addEventListener('click', () => {
+            currentStage = 1;
+            startStage();
+        });
+
+        startStage();
+    </script>
+</body>
+</html>
